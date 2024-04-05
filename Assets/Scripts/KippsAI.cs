@@ -13,7 +13,6 @@ public class KippsAI : MonoBehaviour
 
     private bool IsMouseInWindow()
     {
-        Debug.Log(Input.mousePosition.x + " " + Input.mousePosition.y + " " + Screen.width + " " + Screen.height);
         return !(0 > Input.mousePosition.x || 0 > Input.mousePosition.y || Screen.width < Input.mousePosition.x || Screen.height < Input.mousePosition.y);
     }
 
@@ -33,10 +32,15 @@ public class KippsAI : MonoBehaviour
     {
         if (IsMouseInWindow())
         {
+            mCursorObj.SetActive(true);
             Cursor.SetCursor(LaserCursor, new Vector2(16f, 16f), CursorMode.Auto);
+            Vector3 mousePos = Input.mousePosition;
+            mousePos.z = 0; 
+            mCursorObj.transform.position = mousePos;
         }
         else
         {
+            mCursorObj.SetActive(false);
             Cursor.SetCursor(null, new Vector2(16f, 16f), CursorMode.Auto);
         }
     }
