@@ -7,22 +7,33 @@ static class Constants
     public const float DECAY_RATE = 10.0f;
     public const float INITIAL_INTEREST = 100.0f;
     public const float GROWTH_RATE = 5.0f;
-    public const float UPPER_POUNCE_COOLDOWN = 0.75f;
-    public const float LOWER_POUNCE_COOLDOWN = 0.3f;
-    public const float POUNCE_SPEED = 30.0f;
-    public const float BRAKING_FACTOR = 0.95f;
+    public const float CLOSE_UPPER_POUNCE_COOLDOWN = 0.15f;
+    public const float FAR_UPPER_POUNCE_COOLDOWN = 1.0f;
+    public const float LOWER_POUNCE_COOLDOWN = 0.15f;
+    public const float UPPER_POUNCE_BRAKING_FACTOR = 0.993f;
+    public const float LOWER_POUNCE_BRAKING_FACTOR = 0.985f;
+    public const float POUNCE_SPEED = 76.0f;
     public const float LOST_BRAKING_FACTOR = 0.85f;
+    public const float BRAKING_FACTOR = 0.985f;
+    public const float INNER_RADIUS = 5.0f;
+    public const float OUTER_RADIUS = 7.25f;
+    public const float INVUL_TIME = 1.5f;
+
 }
 
 public class KippsAI : MonoBehaviour
 {
     private BoxCollider2D mBoxCollider;
     public float mInterest = 100.0f;
-    public float mPounceCooldown = Constants.UPPER_POUNCE_COOLDOWN;
+    public float mPounceCooldown = Constants.FAR_UPPER_POUNCE_COOLDOWN;
     private Texture2D LaserCursor;
     private GameObject mCursorObj;
     private Vector3 mVelocity = Vector3.zero;
     private bool mLost = false;
+    public HealthBar healthBar;
+    private float mBreakingFactor = 0.85f;
+    private float mInvulTimer = 0.0f;
+    public List<GameObject> mScorePrefabs = new List<GameObject>();
 
     public enum State
     {
@@ -91,15 +102,44 @@ public class KippsAI : MonoBehaviour
         Vector3 worldPosition = Camera.main.ScreenToWorldPoint(mousePosition);
         Vector3 direction = worldPosition - transform.position;
         direction.z = 0;
+        float distance = direction.magnitude;
         direction.Normalize();
-        mVelocity += direction * Constants.POUNCE_SPEED;
-        mPounceCooldown = Random.Range(Constants.LOWER_POUNCE_COOLDOWN, Constants.UPPER_POUNCE_COOLDOWN);
+
+        // Adjust the cooldown based on distance, closer is faster
+        float initialCooldown = Mathf.Lerp(Constants.CLOSE_UPPER_POUNCE_COOLDOWN, Constants.FAR_UPPER_POUNCE_COOLDOWN, Mathf.Clamp(distance / 15.0f, 0.0f, 1.0f)); // example scaling
+        mPounceCooldown = Random.Range(0.05f, Mathf.Clamp(distance / 15.0f, 0.0f, 1.0f) * 0.45f) + initialCooldown;
+
+        // Adjust velocity based on windup time (mPounceCooldown). The longer the windup, the faster the pounce
+        mVelocity = direction * Constants.POUNCE_SPEED * (initialCooldown / Constants.FAR_UPPER_POUNCE_COOLDOWN);
+
+        // Adjust braking factor based on mVelocity. The faster, the less braking
+        mBreakingFactor = Mathf.Lerp(Constants.LOWER_POUNCE_BRAKING_FACTOR, Constants.UPPER_POUNCE_BRAKING_FACTOR, Mathf.Clamp(mVelocity.magnitude / Constants.POUNCE_SPEED, 0.0f, 1.0f));
+    
+        int scoreIndex = 0;
+        if (distance < Constants.INNER_RADIUS)
+        {
+            scoreIndex = 2;
+        }
+        else if (distance < Constants.OUTER_RADIUS)
+        {
+            scoreIndex = 1;
+        }
+        GameObject scorePrefab = Instantiate(mScorePrefabs[scoreIndex], transform.position, Quaternion.identity);
+        scorePrefab.active = true;
+        Destroy(scorePrefab, 1.0f);
+    }
+
+    void Lose()
+    {
+        Debug.Log("You Lose!");
+        mLost = true;
     }
 
     // Update is called once per frame
     void Update()
     {
         mPounceCooldown -= Time.deltaTime;
+        mInvulTimer -= Time.deltaTime;
         transform.position += mVelocity * Time.deltaTime;
         if (mLost)
         {
@@ -108,16 +148,16 @@ public class KippsAI : MonoBehaviour
         }
         else
         {
-            mVelocity *= Constants.BRAKING_FACTOR;
+            mVelocity *= mBreakingFactor;
         }
         
 
         SetSprite();
         
-        if (CheckForOverlap())
+        if (CheckForOverlap() && mInvulTimer < 0.0f)
         {
-            Debug.Log("You Lose!");
-            mLost = true;
+            healthBar.TakeDamage(1);
+            mInvulTimer = Constants.INVUL_TIME;
         }
 
         if (IsMouseInWindow())
@@ -139,8 +179,18 @@ public class KippsAI : MonoBehaviour
         }
         else
         {
+            if (mInvulTimer < 0.0f)
+            {
+                healthBar.TakeDamage(1);
+            }
+            mInvulTimer = Constants.INVUL_TIME;
             mCursorObj.SetActive(false);
             Cursor.SetCursor(null, new Vector2(16f, 16f), CursorMode.Auto);
+        }
+
+        if (healthBar.GetHealth() == 0)
+        {
+            Lose();
         }
     }
 }
