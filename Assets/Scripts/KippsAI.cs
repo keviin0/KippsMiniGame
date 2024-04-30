@@ -162,12 +162,14 @@ public class KippsAI : MonoBehaviour
         
         SetSprite();
         
+        // If Kipps catches the laser
         if (CheckForOverlap() && mInvulTimer < 0.0f)
         {
             healthBar.TakeDamage(1);
             mInvulTimer = Constants.INVUL_TIME;
         }
 
+        // Mouse checks
         if (IsMouseInWindow())
         {
             // Enable cursor
@@ -180,9 +182,21 @@ public class KippsAI : MonoBehaviour
             mousePos.z = 0; 
             mCursorObj.transform.position = mouseWorldPos;
 
-            if (mPounceCooldown < 0.0f)
+            Collider2D hitCollider = Physics2D.OverlapPoint(mouseWorldPos, LayerMask.GetMask("Valid Cursor Boundary"));
+            if (hitCollider != null)
             {
-                Pounce();
+                if (mPounceCooldown < 0.0f)
+                {
+                    Pounce();
+                }
+            }
+            else
+            {
+                if (mInvulTimer < 0.0f)
+                {
+                    healthBar.TakeDamage(1);
+                    mInvulTimer = Constants.INVUL_TIME;
+                }                
             }
         }
         else
@@ -190,12 +204,14 @@ public class KippsAI : MonoBehaviour
             if (mInvulTimer < 0.0f)
             {
                 healthBar.TakeDamage(1);
+                mInvulTimer = Constants.INVUL_TIME;
             }
             mInvulTimer = Constants.INVUL_TIME;
             mCursorObj.SetActive(false);
             Cursor.SetCursor(null, new Vector2(16f, 16f), CursorMode.Auto);
         }
 
+        // Check conditions for a loss
         if (healthBar.GetHealth() == 0)
         {
             Lose();
