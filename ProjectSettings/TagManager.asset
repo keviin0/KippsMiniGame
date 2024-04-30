@@ -14,7 +14,7 @@ TagManager:
   - Mouse
   - Test
   - Background
-  - 
+  - Foreground
   - 
   - 
   - 
@@ -38,6 +38,9 @@ TagManager:
   - 
   - 
   m_SortingLayers:
+  - name: Foreground
+    uniqueID: 1293210803
+    locked: 0
   - name: Default
     uniqueID: 0
     locked: 0

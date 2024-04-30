@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.UI;
 using System.Collections;
 
 public class HealthBar : MonoBehaviour
@@ -7,6 +8,7 @@ public class HealthBar : MonoBehaviour
     private Animator[] hearts = new Animator[3];
     private SpriteRenderer[] heartRenderers = new SpriteRenderer[3];
     private int health = 3;
+    public Image damageOverlay;
 
     void Start()
     {
@@ -45,12 +47,33 @@ public class HealthBar : MonoBehaviour
                 hearts[i].SetBool("IsFull", false);
             }
         }
+
+        StopCoroutine(DamageFlash());
+        StartCoroutine(DamageFlash());
     }
 
     IEnumerator FadeHeart(int index)
     {
         yield return new WaitForSeconds(1.5f);
         heartRenderers[index].enabled = false;
+    }
+
+    IEnumerator DamageFlash()
+    {
+        float duration = 1.0f;
+        float flashTime = 0.1f;
+
+        // Fade out
+        float fadeOutTime = duration - flashTime;
+        float elapsedTime = 0;
+        while (elapsedTime < fadeOutTime)
+        {
+            float alpha = Mathf.Lerp(0.5f, 0, elapsedTime / fadeOutTime);
+            damageOverlay.color = new Color(1, 0, 0, alpha);
+            elapsedTime += Time.deltaTime;
+            yield return null;
+        }
+        damageOverlay.color = new Color(1, 0, 0, 0);
     }
 
     public int GetHealth()
