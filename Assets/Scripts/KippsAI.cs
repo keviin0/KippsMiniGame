@@ -36,6 +36,8 @@ public class KippsAI : MonoBehaviour
     public List<GameObject> mScorePrefabs = new List<GameObject>();
     private List<int> mScoreValues = new List<int>() { 100, 200, 300 };
     public ScoreManager mScoreManager;
+    public Collider2D collider1;
+    public Collider2D collider2;
 
     public enum State
     {
@@ -71,6 +73,7 @@ public class KippsAI : MonoBehaviour
     void Awake()
     {
         mCursorObj = GameObject.Find("Cursor");
+        mCursorObj.SetActive(true);
         LaserCursor = Resources.Load<Texture2D>("laser_cursor");
         mBoxCollider = GetComponent<BoxCollider2D>();
     }
@@ -100,9 +103,8 @@ public class KippsAI : MonoBehaviour
     void Pounce()
     {
         mVelocity = Vector3.zero;
-        Vector3 mousePosition = Input.mousePosition;
-        Vector3 worldPosition = Camera.main.ScreenToWorldPoint(mousePosition);
-        Vector3 direction = worldPosition - transform.position;
+        Vector3 laserPosition = mCursorObj.transform.position;
+        Vector3 direction = laserPosition - transform.position;
         direction.z = 0;
         float distance = direction.magnitude;
         direction.Normalize();
@@ -143,6 +145,19 @@ public class KippsAI : MonoBehaviour
         mLost = true;
     }
 
+    Vector3 ClampToNearestCollider(Vector3 position)
+    {
+        // Find the closest points on each collider
+        Vector3 closestPoint1 = collider1.ClosestPoint(position);
+        Vector3 closestPoint2 = collider2.ClosestPoint(position);
+
+        // Determine which point is closer to the position
+        float dist1 = (closestPoint1 - position).sqrMagnitude;
+        float dist2 = (closestPoint2 - position).sqrMagnitude;
+
+        return dist1 < dist2 ? closestPoint1 : closestPoint2;
+    }
+
     // Update is called once per frame
     void Update()
     {
@@ -173,32 +188,20 @@ public class KippsAI : MonoBehaviour
         // Mouse checks
         if (IsMouseInWindow())
         {
-            // Enable cursor
-            mCursorObj.SetActive(true);
-            Cursor.SetCursor(LaserCursor, new Vector2(16f, 16f), CursorMode.Auto);
-
             // Move cursor to mouse position
             Vector3 mousePos = Input.mousePosition;
             Vector3 mouseWorldPos = Camera.main.ScreenToWorldPoint(mousePos);
-            mousePos.z = 0; 
-            mCursorObj.transform.position = mouseWorldPos;
-
+            
             Collider2D hitCollider = Physics2D.OverlapPoint(mouseWorldPos, LayerMask.GetMask("Valid Cursor Boundary"));
-            if (hitCollider != null)
+            if (hitCollider == null)
             {
-                if (mPounceCooldown < 0.0f)
-                {
-                    Pounce();
-                }
+                mouseWorldPos = ClampToNearestCollider(mouseWorldPos);         
+                Debug.Log("After" + mouseWorldPos);   
             }
-            else
-            {
-                if (mInvulTimer < 0.0f)
-                {
-                    healthBar.TakeDamage(1);
-                    mInvulTimer = Constants.INVUL_TIME;
-                }                
-            }
+
+            mouseWorldPos.z = 0;  
+
+            mCursorObj.transform.position = mouseWorldPos;
         }
         else
         {
@@ -207,9 +210,13 @@ public class KippsAI : MonoBehaviour
                 healthBar.TakeDamage(1);
                 mInvulTimer = Constants.INVUL_TIME;
             }
-            mInvulTimer = Constants.INVUL_TIME;
-            mCursorObj.SetActive(false);
             Cursor.SetCursor(null, new Vector2(16f, 16f), CursorMode.Auto);
+        }
+
+        // Kipps pounce
+        if (mPounceCooldown < 0.0f)
+        {
+            Pounce();
         }
 
         // Check conditions for a loss
