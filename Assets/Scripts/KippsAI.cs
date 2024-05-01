@@ -9,12 +9,12 @@ static class Constants
     public const float GROWTH_RATE = 5.0f;
     public const float CLOSE_UPPER_POUNCE_COOLDOWN = 0.15f;
     public const float FAR_UPPER_POUNCE_COOLDOWN = 1.0f;
-    public const float LOWER_POUNCE_COOLDOWN = 0.15f;
-    public const float UPPER_POUNCE_BRAKING_FACTOR = 0.993f;
-    public const float LOWER_POUNCE_BRAKING_FACTOR = 0.985f;
-    public const float POUNCE_SPEED = 85.0f;
-    public const float LOST_BRAKING_FACTOR = 0.85f;
-    public const float BRAKING_FACTOR = 0.985f;
+    public const float LOWER_POUNCE_COOLDOWN = 0.05f;
+    public const float UPPER_POUNCE_BRAKING_FACTOR = 0.0025f;
+    public const float LOWER_POUNCE_BRAKING_FACTOR = 0.0005f;
+    public const float POUNCE_SPEED = 70.0f;
+    public const float LOST_BRAKING_FACTOR = 0.001f;
+    public const float BRAKING_FACTOR = 0.10f;
     public const float INNER_RADIUS = 4.0f;
     public const float OUTER_RADIUS = 6.5f;
     public const float INVUL_TIME = 1.5f;
@@ -31,7 +31,7 @@ public class KippsAI : MonoBehaviour
     private Vector3 mVelocity = Vector3.zero;
     private bool mLost = false;
     public HealthBar healthBar;
-    private float mBreakingFactor = 0.85f;
+    private float mBrakingFactor = 0.85f;
     private float mInvulTimer = 0.0f;
     public List<GameObject> mScorePrefabs = new List<GameObject>();
     private List<int> mScoreValues = new List<int>() { 100, 200, 300 };
@@ -115,7 +115,7 @@ public class KippsAI : MonoBehaviour
         mVelocity = direction * Constants.POUNCE_SPEED * (initialCooldown / Constants.FAR_UPPER_POUNCE_COOLDOWN);
 
         // Adjust braking factor based on mVelocity. The faster, the less braking
-        mBreakingFactor = Mathf.Lerp(Constants.LOWER_POUNCE_BRAKING_FACTOR, Constants.UPPER_POUNCE_BRAKING_FACTOR, Mathf.Clamp(mVelocity.magnitude / Constants.POUNCE_SPEED, 0.0f, 1.0f));
+        mBrakingFactor = Mathf.Lerp(Constants.LOWER_POUNCE_BRAKING_FACTOR, Constants.UPPER_POUNCE_BRAKING_FACTOR, Mathf.Clamp(mVelocity.magnitude / Constants.POUNCE_SPEED, 0.0f, 1.0f));
     
         /*
             0 => 100
@@ -146,18 +146,19 @@ public class KippsAI : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
+        Debug.Log(mVelocity.magnitude);
         mPounceCooldown -= Time.deltaTime;
         mInvulTimer -= Time.deltaTime;
         transform.position += mVelocity * Time.deltaTime;
 
         if (mLost)
         {
-            mVelocity *= Constants.LOST_BRAKING_FACTOR;
+            mVelocity *= Mathf.Pow(Constants.LOST_BRAKING_FACTOR, Time.deltaTime);
             return;
         }
         else
         {
-            mVelocity *= mBreakingFactor;
+            mVelocity *= Mathf.Pow(mBrakingFactor, Time.deltaTime);
         }
         
         SetSprite();
